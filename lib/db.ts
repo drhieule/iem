@@ -52,6 +52,67 @@ function initializeSchema(database: Database.Database): void {
       escalated_from TEXT,
       resolved_by_hcp INTEGER DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS lab_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+      tested_at TEXT NOT NULL,
+      test_type TEXT NOT NULL,
+      test_name TEXT NOT NULL,
+      value REAL NOT NULL,
+      unit TEXT NOT NULL,
+      reference_low REAL,
+      reference_high REAL,
+      interpretation TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS appointments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+      scheduled_at TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'routine',
+      doctor TEXT,
+      department TEXT DEFAULT 'Phòng khám Chuyển hóa',
+      status TEXT NOT NULL DEFAULT 'scheduled',
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS dietary_prescriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+      prescribed_at TEXT NOT NULL,
+      prescribed_by TEXT,
+      protein_g_per_kg REAL,
+      protein_g_total REAL,
+      formula_name TEXT,
+      formula_ml_per_day REAL,
+      special_formula TEXT,
+      additional_supplements TEXT NOT NULL DEFAULT '[]',
+      restrictions TEXT NOT NULL DEFAULT '[]',
+      meal_schedule TEXT NOT NULL DEFAULT '{}',
+      notes TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS medications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+      drug_name TEXT NOT NULL,
+      dose_mg_per_kg REAL,
+      dose_total_mg REAL,
+      frequency TEXT,
+      route TEXT DEFAULT 'uống',
+      indication TEXT,
+      start_date TEXT,
+      end_date TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 }
 
@@ -271,6 +332,299 @@ export function getActiveFlagForPatient(patientId: number): FlagEvent | null {
     'SELECT * FROM flag_events WHERE patient_id = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1'
   ).get(patientId) as FlagEvent | undefined;
   return row || null;
+}
+
+// ─── Lab Results ────────────────────────────────────────────────────────────
+
+export interface LabResult {
+  id: number;
+  patient_id: number;
+  tested_at: string;
+  test_type: string;
+  test_name: string;
+  value: number;
+  unit: string;
+  reference_low?: number;
+  reference_high?: number;
+  interpretation?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export function getAllLabResults(patientId?: number): LabResult[] {
+  const database = getDb();
+  if (patientId) {
+    return database.prepare('SELECT * FROM lab_results WHERE patient_id = ? ORDER BY tested_at DESC').all(patientId) as LabResult[];
+  }
+  return database.prepare('SELECT * FROM lab_results ORDER BY tested_at DESC').all() as LabResult[];
+}
+
+export function getLabResultById(id: number): LabResult | null {
+  const database = getDb();
+  const row = database.prepare('SELECT * FROM lab_results WHERE id = ?').get(id) as LabResult | undefined;
+  return row || null;
+}
+
+export function createLabResult(data: Omit<LabResult, 'id' | 'created_at'>): LabResult {
+  const database = getDb();
+  const result = database.prepare(`
+    INSERT INTO lab_results (patient_id, tested_at, test_type, test_name, value, unit, reference_low, reference_high, interpretation, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.patient_id, data.tested_at, data.test_type, data.test_name,
+    data.value, data.unit, data.reference_low ?? null, data.reference_high ?? null,
+    data.interpretation ?? null, data.notes ?? null
+  );
+  return getLabResultById(result.lastInsertRowid as number)!;
+}
+
+export function updateLabResult(id: number, data: Partial<Omit<LabResult, 'id' | 'created_at'>>): LabResult | null {
+  const database = getDb();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  const keys = ['patient_id','tested_at','test_type','test_name','value','unit','reference_low','reference_high','interpretation','notes'] as const;
+  for (const k of keys) {
+    if (data[k] !== undefined) { fields.push(`${k} = ?`); values.push(data[k]); }
+  }
+  if (fields.length === 0) return getLabResultById(id);
+  values.push(id);
+  database.prepare(`UPDATE lab_results SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return getLabResultById(id);
+}
+
+export function deleteLabResult(id: number): boolean {
+  const database = getDb();
+  return database.prepare('DELETE FROM lab_results WHERE id = ?').run(id).changes > 0;
+}
+
+// ─── Appointments ────────────────────────────────────────────────────────────
+
+export interface Appointment {
+  id: number;
+  patient_id: number;
+  scheduled_at: string;
+  type: string;
+  doctor?: string;
+  department?: string;
+  status: string;
+  notes?: string;
+  created_at: string;
+}
+
+export function getAllAppointments(status?: string): Appointment[] {
+  const database = getDb();
+  if (status === 'upcoming') {
+    return database.prepare(
+      "SELECT * FROM appointments WHERE scheduled_at >= datetime('now') AND status = 'scheduled' ORDER BY scheduled_at ASC"
+    ).all() as Appointment[];
+  }
+  if (status === 'past') {
+    return database.prepare(
+      "SELECT * FROM appointments WHERE scheduled_at < datetime('now') ORDER BY scheduled_at DESC"
+    ).all() as Appointment[];
+  }
+  return database.prepare('SELECT * FROM appointments ORDER BY scheduled_at DESC').all() as Appointment[];
+}
+
+export function getAppointmentsByPatient(patientId: number): Appointment[] {
+  const database = getDb();
+  return database.prepare('SELECT * FROM appointments WHERE patient_id = ? ORDER BY scheduled_at DESC').all(patientId) as Appointment[];
+}
+
+export function getAppointmentById(id: number): Appointment | null {
+  const database = getDb();
+  const row = database.prepare('SELECT * FROM appointments WHERE id = ?').get(id) as Appointment | undefined;
+  return row || null;
+}
+
+export function createAppointment(data: Omit<Appointment, 'id' | 'created_at'>): Appointment {
+  const database = getDb();
+  const result = database.prepare(`
+    INSERT INTO appointments (patient_id, scheduled_at, type, doctor, department, status, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.patient_id, data.scheduled_at, data.type,
+    data.doctor ?? null, data.department ?? 'Phòng khám Chuyển hóa',
+    data.status ?? 'scheduled', data.notes ?? null
+  );
+  return getAppointmentById(result.lastInsertRowid as number)!;
+}
+
+export function updateAppointment(id: number, data: Partial<Omit<Appointment, 'id' | 'created_at'>>): Appointment | null {
+  const database = getDb();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  const keys = ['patient_id','scheduled_at','type','doctor','department','status','notes'] as const;
+  for (const k of keys) {
+    if (data[k] !== undefined) { fields.push(`${k} = ?`); values.push(data[k]); }
+  }
+  if (fields.length === 0) return getAppointmentById(id);
+  values.push(id);
+  database.prepare(`UPDATE appointments SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return getAppointmentById(id);
+}
+
+export function getTodayAppointments(): Appointment[] {
+  const database = getDb();
+  return database.prepare(
+    "SELECT * FROM appointments WHERE date(scheduled_at) = date('now') ORDER BY scheduled_at ASC"
+  ).all() as Appointment[];
+}
+
+// ─── Dietary Prescriptions ───────────────────────────────────────────────────
+
+export interface DietaryPrescription {
+  id: number;
+  patient_id: number;
+  prescribed_at: string;
+  prescribed_by?: string;
+  protein_g_per_kg?: number;
+  protein_g_total?: number;
+  formula_name?: string;
+  formula_ml_per_day?: number;
+  special_formula?: string;
+  additional_supplements: string[];
+  restrictions: string[];
+  meal_schedule: Record<string, string>;
+  notes?: string;
+  active: number;
+  created_at: string;
+}
+
+function parseDietRow(row: Record<string, unknown>): DietaryPrescription {
+  return {
+    ...row,
+    additional_supplements: JSON.parse((row.additional_supplements as string) || '[]'),
+    restrictions: JSON.parse((row.restrictions as string) || '[]'),
+    meal_schedule: JSON.parse((row.meal_schedule as string) || '{}'),
+  } as DietaryPrescription;
+}
+
+export function getAllDietaryPrescriptions(activeOnly = true): DietaryPrescription[] {
+  const database = getDb();
+  const rows = activeOnly
+    ? database.prepare('SELECT * FROM dietary_prescriptions WHERE active = 1 ORDER BY prescribed_at DESC').all()
+    : database.prepare('SELECT * FROM dietary_prescriptions ORDER BY prescribed_at DESC').all();
+  return (rows as Record<string, unknown>[]).map(parseDietRow);
+}
+
+export function getDietaryByPatient(patientId: number): DietaryPrescription[] {
+  const database = getDb();
+  const rows = database.prepare('SELECT * FROM dietary_prescriptions WHERE patient_id = ? ORDER BY prescribed_at DESC').all(patientId) as Record<string, unknown>[];
+  return rows.map(parseDietRow);
+}
+
+export function getDietaryById(id: number): DietaryPrescription | null {
+  const database = getDb();
+  const row = database.prepare('SELECT * FROM dietary_prescriptions WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+  return row ? parseDietRow(row) : null;
+}
+
+export function createDietaryPrescription(data: Omit<DietaryPrescription, 'id' | 'created_at'>): DietaryPrescription {
+  const database = getDb();
+  const result = database.prepare(`
+    INSERT INTO dietary_prescriptions (patient_id, prescribed_at, prescribed_by, protein_g_per_kg, protein_g_total, formula_name, formula_ml_per_day, special_formula, additional_supplements, restrictions, meal_schedule, notes, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.patient_id, data.prescribed_at, data.prescribed_by ?? null,
+    data.protein_g_per_kg ?? null, data.protein_g_total ?? null,
+    data.formula_name ?? null, data.formula_ml_per_day ?? null,
+    data.special_formula ?? null,
+    JSON.stringify(data.additional_supplements || []),
+    JSON.stringify(data.restrictions || []),
+    JSON.stringify(data.meal_schedule || {}),
+    data.notes ?? null, data.active ?? 1
+  );
+  return getDietaryById(result.lastInsertRowid as number)!;
+}
+
+export function updateDietaryPrescription(id: number, data: Partial<Omit<DietaryPrescription, 'id' | 'created_at'>>): DietaryPrescription | null {
+  const database = getDb();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (data.patient_id !== undefined) { fields.push('patient_id = ?'); values.push(data.patient_id); }
+  if (data.prescribed_at !== undefined) { fields.push('prescribed_at = ?'); values.push(data.prescribed_at); }
+  if (data.prescribed_by !== undefined) { fields.push('prescribed_by = ?'); values.push(data.prescribed_by); }
+  if (data.protein_g_per_kg !== undefined) { fields.push('protein_g_per_kg = ?'); values.push(data.protein_g_per_kg); }
+  if (data.protein_g_total !== undefined) { fields.push('protein_g_total = ?'); values.push(data.protein_g_total); }
+  if (data.formula_name !== undefined) { fields.push('formula_name = ?'); values.push(data.formula_name); }
+  if (data.formula_ml_per_day !== undefined) { fields.push('formula_ml_per_day = ?'); values.push(data.formula_ml_per_day); }
+  if (data.special_formula !== undefined) { fields.push('special_formula = ?'); values.push(data.special_formula); }
+  if (data.additional_supplements !== undefined) { fields.push('additional_supplements = ?'); values.push(JSON.stringify(data.additional_supplements)); }
+  if (data.restrictions !== undefined) { fields.push('restrictions = ?'); values.push(JSON.stringify(data.restrictions)); }
+  if (data.meal_schedule !== undefined) { fields.push('meal_schedule = ?'); values.push(JSON.stringify(data.meal_schedule)); }
+  if (data.notes !== undefined) { fields.push('notes = ?'); values.push(data.notes); }
+  if (data.active !== undefined) { fields.push('active = ?'); values.push(data.active); }
+  if (fields.length === 0) return getDietaryById(id);
+  values.push(id);
+  database.prepare(`UPDATE dietary_prescriptions SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return getDietaryById(id);
+}
+
+// ─── Medications ─────────────────────────────────────────────────────────────
+
+export interface Medication {
+  id: number;
+  patient_id: number;
+  drug_name: string;
+  dose_mg_per_kg?: number;
+  dose_total_mg?: number;
+  frequency?: string;
+  route?: string;
+  indication?: string;
+  start_date?: string;
+  end_date?: string;
+  active: number;
+  notes?: string;
+  created_at: string;
+}
+
+export function getAllMedications(activeOnly = true): Medication[] {
+  const database = getDb();
+  if (activeOnly) {
+    return database.prepare('SELECT * FROM medications WHERE active = 1 ORDER BY created_at DESC').all() as Medication[];
+  }
+  return database.prepare('SELECT * FROM medications ORDER BY created_at DESC').all() as Medication[];
+}
+
+export function getMedicationsByPatient(patientId: number): Medication[] {
+  const database = getDb();
+  return database.prepare('SELECT * FROM medications WHERE patient_id = ? ORDER BY created_at DESC').all(patientId) as Medication[];
+}
+
+export function getMedicationById(id: number): Medication | null {
+  const database = getDb();
+  const row = database.prepare('SELECT * FROM medications WHERE id = ?').get(id) as Medication | undefined;
+  return row || null;
+}
+
+export function createMedication(data: Omit<Medication, 'id' | 'created_at'>): Medication {
+  const database = getDb();
+  const result = database.prepare(`
+    INSERT INTO medications (patient_id, drug_name, dose_mg_per_kg, dose_total_mg, frequency, route, indication, start_date, end_date, active, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.patient_id, data.drug_name,
+    data.dose_mg_per_kg ?? null, data.dose_total_mg ?? null,
+    data.frequency ?? null, data.route ?? 'uống',
+    data.indication ?? null, data.start_date ?? null,
+    data.end_date ?? null, data.active ?? 1, data.notes ?? null
+  );
+  return getMedicationById(result.lastInsertRowid as number)!;
+}
+
+export function updateMedication(id: number, data: Partial<Omit<Medication, 'id' | 'created_at'>>): Medication | null {
+  const database = getDb();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  const keys = ['patient_id','drug_name','dose_mg_per_kg','dose_total_mg','frequency','route','indication','start_date','end_date','active','notes'] as const;
+  for (const k of keys) {
+    if (data[k] !== undefined) { fields.push(`${k} = ?`); values.push(data[k]); }
+  }
+  if (fields.length === 0) return getMedicationById(id);
+  values.push(id);
+  database.prepare(`UPDATE medications SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return getMedicationById(id);
 }
 
 export { getDb };

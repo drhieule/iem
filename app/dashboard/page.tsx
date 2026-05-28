@@ -87,7 +87,7 @@ export default function DashboardPage() {
             </Link>
             <div>
               <h1 className="text-base font-bold text-white">Dashboard NVYT</h1>
-              <p className="text-xs text-gray-400">Phòng khám Nhi đồng Hiếu Phúc</p>
+              <p className="text-xs text-gray-400">Phòng khám Chuyển hóa Bẩm sinh — BV Nhi Đồng 1</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

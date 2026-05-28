@@ -153,7 +153,7 @@ export default function ProtocolPage() {
         {/* Footer Note */}
         <div className="bg-gray-100 rounded-xl p-4 text-xs text-gray-500 text-center">
           <p>Protocol dựa theo hướng dẫn BIMDG / SSIEM / AAP</p>
-          <p className="mt-1">Phòng khám Nhi đồng Hiếu Phúc — Hotline: 028-XXXX-XXXX</p>
+          <p className="mt-1">Phòng khám Chuyển hóa Bẩm sinh — Bệnh viện Nhi Đồng 1 — Hotline: 028-XXXX-XXXX</p>
         </div>
       </main>
     </div>

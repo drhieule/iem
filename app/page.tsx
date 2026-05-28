@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PatientCard } from '@/components/PatientCard';
 import { FlagBadge } from '@/components/FlagBadge';
-import { Plus, LayoutDashboard, Activity, AlertTriangle, Users, RefreshCw } from 'lucide-react';
+import { Plus, LayoutDashboard, Activity, AlertTriangle, Users, RefreshCw, Building2 } from 'lucide-react';
 
 interface Patient {
   id: number;
@@ -102,8 +102,8 @@ export default function HomePage() {
               <Activity className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-gray-900 leading-tight">IEM Monitor</h1>
-              <p className="text-xs text-gray-500">Phòng khám Nhi đồng Hiếu Phúc</p>
+              <h1 className="text-base font-bold text-gray-900 leading-tight">IEM Monitor — BV Nhi Đồng 1</h1>
+              <p className="text-xs text-gray-500">Phòng khám Chuyển hóa Bẩm sinh — Bệnh viện Nhi Đồng 1</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -114,6 +114,13 @@ export default function HomePage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
+            <Link
+              href="/clinic"
+              className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+            >
+              <Building2 className="w-4 h-4" />
+              Phòng khám
+            </Link>
             <Link
               href="/dashboard"
               className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
