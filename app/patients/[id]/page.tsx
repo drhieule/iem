@@ -7,7 +7,7 @@ import { FlagBadge } from '@/components/FlagBadge';
 import { GlucoseCalculatorWidget } from '@/components/GlucoseCalculatorWidget';
 import {
   ArrowLeft, ClipboardList, BookOpen, Calculator, Phone,
-  Calendar, Weight, Pill, Clock, ChevronRight, AlertTriangle, Trash2
+  Calendar, Weight, Pill, Clock, ChevronRight, AlertTriangle, Trash2, FileImage,
 } from 'lucide-react';
 
 interface Patient {
@@ -220,6 +220,20 @@ export default function PatientDetailPage() {
               </div>
             </div>
             <ChevronRight className="w-5 h-5" />
+          </Link>
+
+          <Link
+            href={`/patients/${id}/lab-upload`}
+            className="flex items-center justify-between bg-white border border-blue-200 rounded-xl px-4 py-3.5 hover:bg-blue-50 transition-colors shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <FileImage className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="font-bold text-gray-800">Upload phiếu XN</p>
+                <p className="text-xs text-gray-500">Scan & lưu kết quả xét nghiệm</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
           </Link>
 
           <Link

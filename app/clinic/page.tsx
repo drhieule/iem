@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Activity, ArrowLeft, Users, AlertTriangle, Calendar, FlaskConical,
   Pill, Salad, BarChart3, RefreshCw, Plus, X, CheckCircle,
-  Clock, ChevronDown, Building2, Stethoscope
+  Clock, ChevronDown, Building2, Stethoscope, FileImage,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -349,11 +350,13 @@ function OverviewTab({ patients, flags, appointments, labResults }: {
 // ─── Tab: Xét nghiệm ─────────────────────────────────────────────────────────
 
 function LabTab({ patients, labResults, onRefresh }: { patients: Patient[]; labResults: LabResult[]; onRefresh: () => void }) {
+  const router = useRouter();
   const [filterPatient, setFilterPatient] = useState('');
   const [filterType, setFilterType] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showUploadDropdown, setShowUploadDropdown] = useState(false);
 
   const [form, setForm] = useState({
     patient_id: '', test_type: '', test_name: '', tested_at: new Date().toISOString().split('T')[0],
@@ -427,10 +430,45 @@ function LabTab({ patients, labResults, onRefresh }: { patients: Patient[]; labR
             {TEST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-          <Plus className="w-4 h-4" />
-          Nhập kết quả mới
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          {/* Upload phiếu XN dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUploadDropdown(v => !v)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            >
+              <FileImage className="w-4 h-4" />
+              Upload phiếu XN
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            {showUploadDropdown && (
+              <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-20 overflow-hidden">
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Chọn bệnh nhân</p>
+                </div>
+                <div className="max-h-52 overflow-y-auto divide-y divide-gray-50">
+                  {patients.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setShowUploadDropdown(false);
+                        router.push(`/patients/${p.id}/lab-upload`);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 text-sm text-gray-800 flex items-center justify-between"
+                    >
+                      <span className="font-medium">{p.name}</span>
+                      <span className="text-xs text-gray-400">{p.diagnosis}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            <Plus className="w-4 h-4" />
+            Nhập kết quả mới
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
