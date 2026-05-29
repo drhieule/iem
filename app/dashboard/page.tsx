@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { FlagBadge } from '@/components/FlagBadge';
 import { ArrowLeft, RefreshCw, AlertTriangle, Phone, CheckCircle, Clock, Users } from 'lucide-react';
+import { UserMenu } from '@/components/UserMenu';
 
 interface FlagEvent {
   id: number;
@@ -101,6 +102,7 @@ export default function DashboardPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Làm mới
             </button>
+            <UserMenu />
           </div>
         </div>
       </header>

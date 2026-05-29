@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import {
   Activity, ArrowLeft, Users, AlertTriangle, Calendar, FlaskConical,
   Pill, Salad, BarChart3, RefreshCw, Plus, X, CheckCircle,
-  Clock, ChevronDown, Building2, Stethoscope, FileImage,
+  Clock, ChevronDown, Building2, Stethoscope, FileImage, Settings,
 } from 'lucide-react';
+import { UserMenu } from '@/components/UserMenu';
+import { useUser } from '@/lib/useUser';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1239,6 +1241,7 @@ export default function ClinicPage() {
   const [prescriptions, setPrescriptions] = useState<DietaryPrescription[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useUser();
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -1284,13 +1287,25 @@ export default function ClinicPage() {
               <p className="text-xs text-gray-500">Bệnh viện Nhi Đồng 1</p>
             </div>
           </div>
-          <button
-            onClick={loadAll}
-            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Làm mới
-          </button>
+          <div className="flex items-center gap-2">
+            {user?.role === 'doctor' && (
+              <Link
+                href="/admin/staff"
+                className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Cài đặt
+              </Link>
+            )}
+            <button
+              onClick={loadAll}
+              className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Làm mới
+            </button>
+            <UserMenu />
+          </div>
         </div>
 
         {/* Tab bar */}

@@ -17,6 +17,19 @@ function getDb(): Database.Database {
 
 function initializeSchema(database: Database.Database): void {
   database.exec(`
+    CREATE TABLE IF NOT EXISTS staff (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('doctor','nurse')),
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      department TEXT DEFAULT 'Phòng khám Chuyển hóa Bẩm sinh',
+      phone TEXT,
+      avatar_initials TEXT,
+      active INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS patients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -114,6 +127,16 @@ function initializeSchema(database: Database.Database): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Safe migrations: add columns to patients if they don't exist
+  const migrations = [
+    `ALTER TABLE patients ADD COLUMN record_number TEXT`,
+    `ALTER TABLE patients ADD COLUMN login_phone TEXT`,
+    `ALTER TABLE patients ADD COLUMN password_hash TEXT`,
+  ];
+  for (const m of migrations) {
+    try { database.exec(m); } catch { /* column already exists */ }
+  }
 }
 
 export interface Patient {
@@ -628,3 +651,84 @@ export function updateMedication(id: number, data: Partial<Omit<Medication, 'id'
 }
 
 export { getDb };
+
+// ─── Staff ───────────────────────────────────────────────────────────────────
+
+export interface Staff {
+  id: number;
+  name: string;
+  role: 'doctor' | 'nurse';
+  username: string;
+  department: string;
+  phone?: string;
+  avatar_initials?: string;
+  active: number;
+  created_at: string;
+}
+
+export function createStaff(data: Omit<Staff, 'id' | 'created_at'> & { password_hash: string }): Staff {
+  const database = getDb();
+  const result = database.prepare(`
+    INSERT INTO staff (name, role, username, password_hash, department, phone, avatar_initials, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.name, data.role, data.username, data.password_hash,
+    data.department || 'Phòng khám Chuyển hóa Bẩm sinh',
+    data.phone ?? null, data.avatar_initials ?? null, data.active ?? 1
+  );
+  const row = database.prepare('SELECT * FROM staff WHERE id = ?').get(result.lastInsertRowid as number) as Staff;
+  return row;
+}
+
+export function getStaffByUsername(username: string): (Staff & { password_hash: string }) | null {
+  const database = getDb();
+  const row = database.prepare('SELECT * FROM staff WHERE username = ? AND active = 1').get(username) as (Staff & { password_hash: string }) | undefined;
+  return row || null;
+}
+
+export function getAllStaff(): Staff[] {
+  const database = getDb();
+  return database.prepare('SELECT id, name, role, username, department, phone, avatar_initials, active, created_at FROM staff ORDER BY created_at DESC').all() as Staff[];
+}
+
+export function updateStaffPassword(id: number, password_hash: string): void {
+  const database = getDb();
+  database.prepare('UPDATE staff SET password_hash = ? WHERE id = ?').run(password_hash, id);
+}
+
+export function deactivateStaff(id: number): void {
+  const database = getDb();
+  database.prepare('UPDATE staff SET active = 0 WHERE id = ?').run(id);
+}
+
+export function updateStaff(id: number, data: Partial<Pick<Staff, 'name' | 'department' | 'phone'>>): Staff | null {
+  const database = getDb();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name); }
+  if (data.department !== undefined) { fields.push('department = ?'); values.push(data.department); }
+  if (data.phone !== undefined) { fields.push('phone = ?'); values.push(data.phone); }
+  if (fields.length === 0) return database.prepare('SELECT id, name, role, username, department, phone, avatar_initials, active, created_at FROM staff WHERE id = ?').get(id) as Staff | null;
+  values.push(id);
+  database.prepare(`UPDATE staff SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return database.prepare('SELECT id, name, role, username, department, phone, avatar_initials, active, created_at FROM staff WHERE id = ?').get(id) as Staff | null;
+}
+
+// ─── Patient Auth Helpers ─────────────────────────────────────────────────────
+
+export function updatePatientLoginInfo(id: number, record_number: string, login_phone: string, password_hash?: string): void {
+  const database = getDb();
+  if (password_hash) {
+    database.prepare('UPDATE patients SET record_number = ?, login_phone = ?, password_hash = ? WHERE id = ?').run(record_number, login_phone, password_hash, id);
+  } else {
+    database.prepare('UPDATE patients SET record_number = ?, login_phone = ? WHERE id = ?').run(record_number, login_phone, id);
+  }
+}
+
+export function getPatientByLoginPhone(phone: string): { id: number; name: string; login_phone: string; record_number: string; password_hash: string | null } | null {
+  const database = getDb();
+  const row = database.prepare(
+    'SELECT id, name, login_phone, record_number, password_hash FROM patients WHERE login_phone = ?'
+  ).get(phone) as { id: number; name: string; login_phone: string; record_number: string; password_hash: string | null } | undefined;
+  return row || null;
+}

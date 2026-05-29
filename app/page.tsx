@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PatientCard } from '@/components/PatientCard';
 import { FlagBadge } from '@/components/FlagBadge';
 import { Plus, LayoutDashboard, Activity, AlertTriangle, Users, RefreshCw, Building2 } from 'lucide-react';
+import { UserMenu } from '@/components/UserMenu';
 
 interface Patient {
   id: number;
@@ -128,6 +129,7 @@ export default function HomePage() {
               <LayoutDashboard className="w-4 h-4" />
               Dashboard NVYT
             </Link>
+            <UserMenu />
           </div>
         </div>
       </header>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createPatient, createSymptomEntry, createFlagEvent, getDb, createLabResult, createAppointment, createDietaryPrescription, createMedication } from '@/lib/db';
+import { createPatient, createSymptomEntry, createFlagEvent, getDb, createLabResult, createAppointment, createDietaryPrescription, createMedication, createStaff, updatePatientLoginInfo } from '@/lib/db';
+import { hashPassword } from '@/lib/auth';
 import { evaluateFlag } from '@/lib/flag-engine';
 
 export async function POST() {
@@ -283,6 +284,29 @@ export async function POST() {
     // Patient 4 (FAOD) meds
     createMedication({ patient_id: patient4.id, drug_name: 'Dầu MCT (Medium Chain Triglyceride)', dose_mg_per_kg: undefined, dose_total_mg: undefined, frequency: '3 lần/ngày', route: 'uống', indication: 'Nguồn năng lượng thay thế LCT', start_date: '2023-03-01', notes: '15ml x 3 lần/ngày pha vào thức ăn', active: 1 });
     createMedication({ patient_id: patient4.id, drug_name: 'Glucose Polymer (Maltodextrin)', dose_mg_per_kg: undefined, dose_total_mg: undefined, frequency: 'Khi cần', route: 'uống', indication: 'Dự phòng hạ đường huyết khi vận động hoặc bệnh cấp', start_date: '2023-03-01', notes: '5g pha trong 100ml nước — dùng ngay khi đường huyết < 3.9 hoặc trước vận động', active: 1 });
+
+    // ─── Seed staff accounts ────────────────────────────────────────────────
+    const staffSeedList = [
+      { name: 'BS. Lê Hiếu Phúc', role: 'doctor' as const, username: 'bs.hieule', password: 'HieuPhuc@2026', department: 'Phòng khám Chuyển hóa Bẩm sinh' },
+      { name: 'ĐD. Nguyễn Thị Lan', role: 'nurse' as const, username: 'dn.lan', password: 'NhiDong@2026', department: 'Phòng khám Chuyển hóa Bẩm sinh' },
+      { name: 'ĐD. Trần Minh Tuấn', role: 'nurse' as const, username: 'dn.tuan', password: 'NhiDong@2026', department: 'Phòng khám Chuyển hóa Bẩm sinh' },
+    ];
+
+    for (const s of staffSeedList) {
+      try {
+        const password_hash = await hashPassword(s.password);
+        const initials = s.name.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).join('');
+        createStaff({ ...s, password_hash, avatar_initials: initials, active: 1 });
+      } catch {
+        // duplicate username on re-seed — skip
+      }
+    }
+
+    // ─── Seed patient login credentials ────────────────────────────────────
+    updatePatientLoginInfo(patient1.id, 'NĐ1-2024-0001', '0901234567');
+    updatePatientLoginInfo(patient2.id, 'NĐ1-2024-0002', '0903456789');
+    updatePatientLoginInfo(patient3.id, 'NĐ1-2024-0003', '0905678901');
+    updatePatientLoginInfo(patient4.id, 'NĐ1-2024-0004', '0906789012');
 
     return NextResponse.json({
       message: 'Đã tạo dữ liệu mẫu thành công',

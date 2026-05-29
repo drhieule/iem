@@ -7,8 +7,9 @@ import { FlagBadge } from '@/components/FlagBadge';
 import { GlucoseCalculatorWidget } from '@/components/GlucoseCalculatorWidget';
 import {
   ArrowLeft, ClipboardList, BookOpen, Calculator, Phone,
-  Calendar, Weight, Pill, Clock, ChevronRight, AlertTriangle, Trash2, FileImage,
+  Calendar, Weight, Pill, Clock, ChevronRight, AlertTriangle, Trash2, FileImage, KeyRound,
 } from 'lucide-react';
+import { useUser } from '@/lib/useUser';
 
 interface Patient {
   id: number;
@@ -21,6 +22,8 @@ interface Patient {
   protein_allowance_g_per_kg?: number;
   formula_allowance_ml?: number;
   emergency_contacts: Array<{ name: string; phone: string; relation: string }>;
+  record_number?: string;
+  login_phone?: string;
   created_at: string;
 }
 
@@ -78,6 +81,7 @@ export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const { user: currentUser } = useUser();
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [entries, setEntries] = useState<SymptomEntry[]>([]);
@@ -85,6 +89,12 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showCalc, setShowCalc] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Patient credentials state
+  const [credPhone, setCredPhone] = useState('');
+  const [credRecord, setCredRecord] = useState('');
+  const [credSaving, setCredSaving] = useState(false);
+  const [credMsg, setCredMsg] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -102,6 +112,8 @@ export default function PatientDetailPage() {
         setPatient(pData);
         setEntries(Array.isArray(eData) ? eData.slice(0, 5) : []);
         setActiveFlag(fData.find(f => f.patient_id === Number(id)) || null);
+        setCredPhone(pData.login_phone || '');
+        setCredRecord(pData.record_number || '');
       } finally {
         setLoading(false);
       }
@@ -313,6 +325,84 @@ export default function PatientDetailPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Patient Login Credentials (doctor only) */}
+        {currentUser?.role === 'doctor' && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <KeyRound className="w-4 h-4 text-blue-500" />
+              <h2 className="font-bold text-gray-800">Cấp quyền đăng nhập bệnh nhân</h2>
+            </div>
+            {patient.login_phone && patient.record_number ? (
+              <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+                Đã cấp: SĐT <strong>{patient.login_phone}</strong> — Hồ sơ <strong>{patient.record_number}</strong>
+              </div>
+            ) : (
+              <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500">
+                Chưa cấp quyền đăng nhập cho bệnh nhân này.
+              </div>
+            )}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setCredSaving(true);
+                setCredMsg('');
+                try {
+                  const res = await fetch('/api/auth/patient-credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ patient_id: patient.id, record_number: credRecord, login_phone: credPhone }),
+                  });
+                  if (res.ok) {
+                    setCredMsg('Cấp quyền thành công');
+                    setPatient(p => p ? { ...p, login_phone: credPhone, record_number: credRecord } : p);
+                  } else {
+                    const d = await res.json();
+                    setCredMsg(d.error || 'Lỗi cấp quyền');
+                  }
+                } finally {
+                  setCredSaving(false);
+                }
+              }}
+              className="space-y-3"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Số điện thoại đăng nhập</label>
+                  <input
+                    type="tel"
+                    value={credPhone}
+                    onChange={e => setCredPhone(e.target.value)}
+                    placeholder="0901234567"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Số hồ sơ</label>
+                  <input
+                    type="text"
+                    value={credRecord}
+                    onChange={e => setCredRecord(e.target.value)}
+                    placeholder="NĐ1-2024-001234"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+              {credMsg && (
+                <p className={`text-xs ${credMsg.includes('thành công') ? 'text-green-600' : 'text-red-600'}`}>{credMsg}</p>
+              )}
+              <button
+                type="submit"
+                disabled={credSaving}
+                className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+              >
+                {credSaving ? 'Đang lưu...' : 'Cấp quyền'}
+              </button>
+            </form>
           </div>
         )}
 
