@@ -7,7 +7,7 @@ export async function POST() {
   try {
     // Clear existing data
     const db = getDb();
-    db.exec('DELETE FROM medications; DELETE FROM dietary_prescriptions; DELETE FROM appointments; DELETE FROM lab_results; DELETE FROM flag_events; DELETE FROM symptom_entries; DELETE FROM patients;');
+    db.exec('DELETE FROM medications; DELETE FROM dietary_prescriptions; DELETE FROM appointments; DELETE FROM lab_results; DELETE FROM flag_events; DELETE FROM symptom_entries; DELETE FROM patients; DELETE FROM staff;');
 
     // Patient 1: UCD - Stable (GREEN)
     const patient1 = createPatient({
@@ -286,13 +286,14 @@ export async function POST() {
     createMedication({ patient_id: patient4.id, drug_name: 'Glucose Polymer (Maltodextrin)', dose_mg_per_kg: undefined, dose_total_mg: undefined, frequency: 'Khi cần', route: 'uống', indication: 'Dự phòng hạ đường huyết khi vận động hoặc bệnh cấp', start_date: '2023-03-01', notes: '5g pha trong 100ml nước — dùng ngay khi đường huyết < 3.9 hoặc trước vận động', active: 1 });
 
     // ─── Seed staff accounts ────────────────────────────────────────────────
-    const staffSeedList = [
+    const allStaff = [
+      { name: 'BS. Hồng Phúc', role: 'admin' as const, username: 'bshongphuc', password: 'bsphucdethuong', department: 'Quản trị hệ thống — Phòng khám Chuyển hóa Bẩm sinh' },
       { name: 'BS. Lê Hiếu Phúc', role: 'doctor' as const, username: 'bs.hieule', password: 'HieuPhuc@2026', department: 'Phòng khám Chuyển hóa Bẩm sinh' },
       { name: 'ĐD. Nguyễn Thị Lan', role: 'nurse' as const, username: 'dn.lan', password: 'NhiDong@2026', department: 'Phòng khám Chuyển hóa Bẩm sinh' },
       { name: 'ĐD. Trần Minh Tuấn', role: 'nurse' as const, username: 'dn.tuan', password: 'NhiDong@2026', department: 'Phòng khám Chuyển hóa Bẩm sinh' },
     ];
 
-    for (const s of staffSeedList) {
+    for (const s of allStaff) {
       try {
         const password_hash = await hashPassword(s.password);
         const initials = s.name.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).join('');

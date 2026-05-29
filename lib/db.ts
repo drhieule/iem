@@ -20,7 +20,7 @@ function initializeSchema(database: Database.Database): void {
     CREATE TABLE IF NOT EXISTS staff (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('doctor','nurse')),
+      role TEXT NOT NULL CHECK(role IN ('admin','doctor','nurse')),
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       department TEXT DEFAULT 'Phòng khám Chuyển hóa Bẩm sinh',
@@ -657,7 +657,7 @@ export { getDb };
 export interface Staff {
   id: number;
   name: string;
-  role: 'doctor' | 'nurse';
+  role: 'admin' | 'doctor' | 'nurse';
   username: string;
   department: string;
   phone?: string;

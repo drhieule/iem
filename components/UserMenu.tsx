@@ -6,14 +6,16 @@ import { useUser } from '@/lib/useUser';
 import { User, LogOut, ChevronDown, Stethoscope, Shield, HeartPulse } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, { label: string; cls: string }> = {
+  admin: { label: 'Admin', cls: 'bg-purple-100 text-purple-700' },
   doctor: { label: 'Bác sĩ', cls: 'bg-blue-100 text-blue-700' },
-  nurse: { label: 'Điều dưỡng', cls: 'bg-purple-100 text-purple-700' },
+  nurse: { label: 'Điều dưỡng', cls: 'bg-teal-100 text-teal-700' },
   patient: { label: 'Bệnh nhân', cls: 'bg-green-100 text-green-700' },
 };
 
 function RoleIcon({ role }: { role: string }) {
+  if (role === 'admin') return <Shield className="w-3.5 h-3.5" />;
   if (role === 'doctor') return <Stethoscope className="w-3.5 h-3.5" />;
-  if (role === 'nurse') return <Shield className="w-3.5 h-3.5" />;
+  if (role === 'nurse') return <HeartPulse className="w-3.5 h-3.5" />;
   return <HeartPulse className="w-3.5 h-3.5" />;
 }
 
@@ -86,6 +88,15 @@ export function UserMenu() {
             </div>
           </div>
           <div className="py-1">
+            {user.role === 'admin' && (
+              <button
+                onClick={() => { setOpen(false); router.push('/admin'); }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+              >
+                <Shield className="w-4 h-4 text-purple-500" />
+                Quản trị tài khoản
+              </button>
+            )}
             {user.role === 'doctor' && (
               <button
                 onClick={() => { setOpen(false); router.push('/admin/staff'); }}

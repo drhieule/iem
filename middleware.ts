@@ -12,8 +12,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow all API routes except protected staff management
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/staff')) {
+  // Allow all API routes except protected staff/admin management
+  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/staff') && !pathname.startsWith('/api/auth/admin')) {
     return NextResponse.next();
   }
 
@@ -29,7 +29,20 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Patient can only access their own records
+  // Admin has full access to everything
+  if (user.role === 'admin' || user.role === 'doctor') {
+    return NextResponse.next();
+  }
+
+  // Nurse: access all except admin pages
+  if (user.role === 'nurse') {
+    if (pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Patient: only own records
   if (user.role === 'patient') {
     const allowedForPatient = [
       `/patients/${user.patientId}`,

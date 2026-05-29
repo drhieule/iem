@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PatientCard } from '@/components/PatientCard';
 import { FlagBadge } from '@/components/FlagBadge';
-import { Plus, LayoutDashboard, Activity, AlertTriangle, Users, RefreshCw, Building2 } from 'lucide-react';
+import { Plus, LayoutDashboard, Activity, AlertTriangle, Users, RefreshCw, Building2, Shield } from 'lucide-react';
 import { UserMenu } from '@/components/UserMenu';
+import { useUser } from '@/lib/useUser';
 
 interface Patient {
   id: number;
@@ -29,6 +30,7 @@ interface PatientWithFlag extends Patient {
 }
 
 export default function HomePage() {
+  const { user } = useUser();
   const [patients, setPatients] = useState<PatientWithFlag[]>([]);
   const [activeFlags, setActiveFlags] = useState<FlagEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +131,15 @@ export default function HomePage() {
               <LayoutDashboard className="w-4 h-4" />
               Dashboard NVYT
             </Link>
+            {user?.role === 'admin' && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+              >
+                <Shield className="w-4 h-4" />
+                Quản trị
+              </Link>
+            )}
             <UserMenu />
           </div>
         </div>

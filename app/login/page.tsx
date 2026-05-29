@@ -221,7 +221,9 @@ export default function LoginPage() {
               </button>
               {showDemo && (
                 <div className="px-4 py-3 space-y-2 bg-white">
-                  <div className="grid grid-cols-[80px_1fr] gap-1 text-xs">
+                  <div className="grid grid-cols-[90px_1fr] gap-1 text-xs">
+                    <span className="text-gray-500 font-medium">Admin:</span>
+                    <span className="text-gray-800 font-mono">bshongphuc / bsphucdethuong</span>
                     <span className="text-gray-500 font-medium">Bác sĩ:</span>
                     <span className="text-gray-800 font-mono">bs.hieule / HieuPhuc@2026</span>
                     <span className="text-gray-500 font-medium">Điều dưỡng:</span>

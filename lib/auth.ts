@@ -5,7 +5,7 @@ const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'iem-bvnhidong1-secret-2026-change-in-prod'
 );
 
-export type UserRole = 'doctor' | 'nurse' | 'patient';
+export type UserRole = 'admin' | 'doctor' | 'nurse' | 'patient';
 
 export interface SessionUser {
   id: number;
