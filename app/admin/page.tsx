@@ -766,9 +766,7 @@ export default function AdminPage() {
                   />
                   {patientSearch && (
                     <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden max-h-40 overflow-y-auto bg-white shadow-sm">
-                      {filteredPatientsForGrant.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-gray-400">Không tìm thấy — hãy thêm bệnh nhân trước</div>
-                      ) : filteredPatientsForGrant.map(p => (
+                      {filteredPatientsForGrant.map(p => (
                         <button
                           key={p.id}
                           type="button"
