@@ -271,9 +271,7 @@ export default function AdminPage() {
   const adminCount = staff.filter(s => s.role === 'admin').length;
   const activeStaff = staff.filter(s => s.active).length;
 
-  // Patients without login for dropdown
-  const patientsWithoutLogin = allPatients.filter(p => !p.login_phone);
-  const filteredPatientsForGrant = patientsWithoutLogin.filter(p =>
+  const filteredPatientsForGrant = allPatients.filter(p =>
     patientSearch === '' || p.name.toLowerCase().includes(patientSearch.toLowerCase())
   );
 
@@ -744,33 +742,49 @@ export default function AdminPage() {
       {showGrantModal && (
         <Modal title="Cấp quyền đăng nhập bệnh nhân" onClose={() => setShowGrantModal(false)}>
           <form onSubmit={handleGrantLogin} className="space-y-4">
-            <div>
+            <div className="relative">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Chọn bệnh nhân *</label>
-              <input
-                value={patientSearch}
-                onChange={e => setPatientSearch(e.target.value)}
-                className={inputCls}
-                placeholder="Tìm kiếm tên bệnh nhân..."
-              />
-              {patientSearch && (
-                <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
-                  {filteredPatientsForGrant.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-gray-400">Không tìm thấy</div>
-                  ) : filteredPatientsForGrant.map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => {
-                        setGrantForm(f => ({ ...f, patient_id: String(p.id) }));
-                        setPatientSearch(p.name);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                    >
-                      <span className="font-medium">{p.name}</span>
-                      <span className="text-xs text-gray-400 ml-2">{p.diagnosis}</span>
-                    </button>
-                  ))}
+              {grantForm.patient_id ? (
+                <div className="flex items-center justify-between border border-green-300 bg-green-50 rounded-lg px-3 py-2">
+                  <span className="text-sm font-medium text-green-800">{patientSearch}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setGrantForm(f => ({ ...f, patient_id: '' })); setPatientSearch(''); }}
+                    className="text-xs text-green-600 hover:text-red-600 ml-2"
+                  >
+                    Đổi
+                  </button>
                 </div>
+              ) : (
+                <>
+                  <input
+                    value={patientSearch}
+                    onChange={e => { setPatientSearch(e.target.value); setGrantForm(f => ({ ...f, patient_id: '' })); }}
+                    className={inputCls}
+                    placeholder="Tìm kiếm tên bệnh nhân..."
+                    autoComplete="off"
+                  />
+                  {patientSearch && (
+                    <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden max-h-40 overflow-y-auto bg-white shadow-sm">
+                      {filteredPatientsForGrant.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-400">Không tìm thấy — hãy thêm bệnh nhân trước</div>
+                      ) : filteredPatientsForGrant.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setGrantForm(f => ({ ...f, patient_id: String(p.id) }));
+                            setPatientSearch(p.name);
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-gray-100 last:border-0"
+                        >
+                          <span className="font-medium">{p.name}</span>
+                          <span className="text-xs text-gray-400 ml-2">{p.diagnosis}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
             <div>
