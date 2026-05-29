@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { UserCircle, Lock, Phone, FileText, Eye, EyeOff, Activity, ChevronDown, ChevronUp } from 'lucide-react';
+import { ClinicScheduleCalendar } from '@/components/ClinicScheduleCalendar';
 
 type Tab = 'staff' | 'patient';
 
@@ -71,7 +72,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-5">
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Header */}
@@ -189,7 +190,7 @@ export default function LoginPage() {
                         type="text"
                         value={recordNumber}
                         onChange={e => setRecordNumber(e.target.value)}
-                        placeholder="NĐ1-2024-001234"
+                        placeholder="Số hồ sơ bệnh nhân"
                         className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         required
                       />
@@ -255,6 +256,14 @@ export default function LoginPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Clinic schedule */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 text-center">
+            Lịch phòng khám tháng này
+          </p>
+          <ClinicScheduleCalendar />
         </div>
       </div>
     </div>

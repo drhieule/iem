@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { UserMenu } from '@/components/UserMenu';
 import { useUser } from '@/lib/useUser';
+import { ClinicScheduleCalendar } from '@/components/ClinicScheduleCalendar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -575,7 +576,7 @@ function LabTab({ patients, labResults, onRefresh }: { patients: Patient[]; labR
 
 // ─── Tab: Lịch khám ───────────────────────────────────────────────────────────
 
-function AppointmentsTab({ patients, appointments, onRefresh }: { patients: Patient[]; appointments: Appointment[]; onRefresh: () => void }) {
+function AppointmentsTab({ patients, appointments, onRefresh, canEdit }: { patients: Patient[]; appointments: Appointment[]; onRefresh: () => void; canEdit: boolean }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -634,7 +635,27 @@ function AppointmentsTab({ patients, appointments, onRefresh }: { patients: Pati
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Monthly clinic schedule */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+            <Stethoscope className="w-4 h-4 text-blue-600" />
+            Lịch phòng khám tháng
+          </h3>
+          {canEdit && (
+            <p className="text-xs text-gray-400">Nhấn vào ô chiều T3/T5 để phân công bác sĩ</p>
+          )}
+        </div>
+        <ClinicScheduleCalendar editable={canEdit} />
+      </div>
+
+      {/* Patient appointments */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-gray-500" />
+          Lịch hẹn bệnh nhân
+        </h3>
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
           {[{ v: 'all', l: 'Tất cả' }, { v: 'upcoming', l: 'Sắp tới' }, { v: 'past', l: 'Đã qua' }].map(opt => (
@@ -701,6 +722,7 @@ function AppointmentsTab({ patients, appointments, onRefresh }: { patients: Pati
           </tbody>
         </table>
       </div>
+      </div>{/* end patient appointments */}
 
       {showModal && (
         <Modal title="Đặt lịch khám mới" onClose={() => setShowModal(false)}>
@@ -1344,7 +1366,7 @@ export default function ClinicPage() {
               <LabTab patients={patients} labResults={labResults} onRefresh={loadAll} />
             )}
             {activeTab === 'appointments' && (
-              <AppointmentsTab patients={patients} appointments={appointments} onRefresh={loadAll} />
+              <AppointmentsTab patients={patients} appointments={appointments} onRefresh={loadAll} canEdit={user?.role === 'admin' || user?.role === 'doctor'} />
             )}
             {activeTab === 'dietary' && (
               <DietaryTab patients={patients} prescriptions={prescriptions} onRefresh={loadAll} />

@@ -789,10 +789,9 @@ export default function AdminPage() {
                 value={grantForm.record_number}
                 onChange={e => setGrantForm(f => ({ ...f, record_number: e.target.value }))}
                 className={inputCls}
-                placeholder="NĐ1-2024-0001"
+                placeholder="Nhập số hồ sơ bệnh nhân"
                 required
               />
-              <p className="text-xs text-gray-400 mt-1">Định dạng: NĐ1-2024-XXXX</p>
             </div>
             {error && <p className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <div className="flex gap-2 pt-1">

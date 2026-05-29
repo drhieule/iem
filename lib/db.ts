@@ -126,6 +126,15 @@ function initializeSchema(database: Database.Database): void {
       notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS clinic_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_date TEXT NOT NULL UNIQUE,
+      doctor_name TEXT,
+      notes TEXT,
+      created_by INTEGER REFERENCES staff(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Safe migrations: add columns to patients if they don't exist
@@ -742,4 +751,46 @@ export function getPatientByLoginPhone(phone: string): { id: number; name: strin
     'SELECT id, name, login_phone, record_number, password_hash FROM patients WHERE login_phone = ?'
   ).get(phone) as { id: number; name: string; login_phone: string; record_number: string; password_hash: string | null } | undefined;
   return row || null;
+}
+
+// ─── Clinic Sessions ──────────────────────────────────────────────────────────
+
+export interface ClinicSession {
+  id: number;
+  session_date: string;
+  doctor_name: string | null;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export function getClinicSessionsByMonth(year: number, month: number): ClinicSession[] {
+  const database = getDb();
+  const prefix = `${year}-${String(month).padStart(2, '0')}`;
+  return database.prepare(
+    "SELECT * FROM clinic_sessions WHERE session_date LIKE ? ORDER BY session_date ASC"
+  ).all(`${prefix}-%`) as ClinicSession[];
+}
+
+export function upsertClinicSession(
+  session_date: string,
+  doctor_name: string | null,
+  notes: string | null,
+  created_by: number | null
+): ClinicSession {
+  const database = getDb();
+  database.prepare(`
+    INSERT INTO clinic_sessions (session_date, doctor_name, notes, created_by)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(session_date) DO UPDATE SET
+      doctor_name = excluded.doctor_name,
+      notes = excluded.notes,
+      created_by = excluded.created_by
+  `).run(session_date, doctor_name, notes, created_by);
+  return database.prepare('SELECT * FROM clinic_sessions WHERE session_date = ?').get(session_date) as ClinicSession;
+}
+
+export function deleteClinicSession(session_date: string): boolean {
+  const database = getDb();
+  return database.prepare('DELETE FROM clinic_sessions WHERE session_date = ?').run(session_date).changes > 0;
 }

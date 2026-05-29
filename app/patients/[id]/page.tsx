@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FlagBadge } from '@/components/FlagBadge';
 import { GlucoseCalculatorWidget } from '@/components/GlucoseCalculatorWidget';
+import { ClinicScheduleCalendar } from '@/components/ClinicScheduleCalendar';
 import {
   ArrowLeft, ClipboardList, BookOpen, Calculator, Phone,
   Calendar, Weight, Pill, Clock, ChevronRight, AlertTriangle, Trash2, FileImage, KeyRound,
@@ -386,7 +387,7 @@ export default function PatientDetailPage() {
                     type="text"
                     value={credRecord}
                     onChange={e => setCredRecord(e.target.value)}
-                    placeholder="NĐ1-2024-001234"
+                    placeholder="Số hồ sơ bệnh nhân"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -405,6 +406,15 @@ export default function PatientDetailPage() {
             </form>
           </div>
         )}
+
+        {/* Clinic Schedule */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            <h2 className="font-bold text-gray-800">Lịch phòng khám</h2>
+          </div>
+          <ClinicScheduleCalendar editable={currentUser?.role === 'doctor' || currentUser?.role === 'admin'} />
+        </div>
 
         {/* Recent Entries */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
