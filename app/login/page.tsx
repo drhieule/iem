@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { UserCircle, Lock, Phone, FileText, Eye, EyeOff, Activity, ChevronDown, ChevronUp } from 'lucide-react';
 
 type Tab = 'staff' | 'patient';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('staff');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,13 +44,12 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect based on role
+      // Hard reload to ensure httpOnly cookie is picked up by middleware
       if (data.user.role === 'patient') {
-        router.push(`/patients/${data.user.patientId}`);
+        window.location.href = `/patients/${data.user.patientId}`;
       } else {
-        router.push('/');
+        window.location.href = '/';
       }
-      router.refresh();
     } catch {
       setError('Lỗi kết nối máy chủ');
     } finally {
