@@ -328,8 +328,8 @@ export default function PatientDetailPage() {
           </div>
         )}
 
-        {/* Patient Login Credentials (doctor only) */}
-        {currentUser?.role === 'doctor' && (
+        {/* Patient Login Credentials (admin + doctor) */}
+        {(currentUser?.role === 'doctor' || currentUser?.role === 'admin') && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-4">
               <KeyRound className="w-4 h-4 text-blue-500" />

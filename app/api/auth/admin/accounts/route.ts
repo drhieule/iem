@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
   const user = await verifyToken(token);
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'doctor')) {
     return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
   }
 
@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
     };
 
     if (body.account_type === 'staff') {
+      if (user.role !== 'admin') {
+        return NextResponse.json({ error: 'Chỉ Admin mới có thể tạo tài khoản nhân viên' }, { status: 403 });
+      }
       const { name, role, username, password, department, phone } = body;
       if (!name || !role || !username || !password) {
         return NextResponse.json({ error: 'Thiếu thông tin bắt buộc' }, { status: 400 });

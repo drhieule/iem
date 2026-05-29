@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
   const user = await verifyToken(token);
-  if (!user || user.role !== 'doctor') {
+  if (!user || (user.role !== 'doctor' && user.role !== 'admin')) {
     return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
   }
 
