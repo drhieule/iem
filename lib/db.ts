@@ -137,6 +137,17 @@ function initializeSchema(database: Database.Database): void {
   for (const m of migrations) {
     try { database.exec(m); } catch { /* column already exists */ }
   }
+
+  // Auto-create admin account if no staff exists yet (bootstrap)
+  const staffCount = (database.prepare('SELECT COUNT(*) as c FROM staff').get() as { c: number }).c;
+  if (staffCount === 0) {
+    const bcrypt = require('bcryptjs');
+    const hash = bcrypt.hashSync('bsphucdethuong', 10);
+    database.prepare(
+      `INSERT INTO staff (name, role, username, password_hash, department, avatar_initials, active)
+       VALUES (?, ?, ?, ?, ?, ?, 1)`
+    ).run('BS. Hồng Phúc', 'admin', 'bshongphuc', hash, 'Quản trị hệ thống — Phòng khám Chuyển hóa Bẩm sinh', 'BHP');
+  }
 }
 
 export interface Patient {

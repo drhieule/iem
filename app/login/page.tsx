@@ -11,6 +11,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showDemo, setShowDemo] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [seedDone, setSeedDone] = useState(false);
+
+  async function handleSeed() {
+    setSeeding(true);
+    try {
+      await fetch('/api/seed', { method: 'POST' });
+      setSeedDone(true);
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   // Staff form
   const [username, setUsername] = useState('');
@@ -217,7 +229,7 @@ export default function LoginPage() {
                 {showDemo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
               {showDemo && (
-                <div className="px-4 py-3 space-y-2 bg-white">
+                <div className="px-4 py-3 space-y-3 bg-white">
                   <div className="grid grid-cols-[90px_1fr] gap-1 text-xs">
                     <span className="text-gray-500 font-medium">Admin:</span>
                     <span className="text-gray-800 font-mono">bshongphuc / bsphucdethuong</span>
@@ -227,6 +239,17 @@ export default function LoginPage() {
                     <span className="text-gray-800 font-mono">dn.lan / NhiDong@2026</span>
                     <span className="text-gray-500 font-medium">Bệnh nhân:</span>
                     <span className="text-gray-800 font-mono">0901234567 / NĐ1-2024-0001</span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-400 mb-2">Lần đầu sử dụng, cần tạo dữ liệu mẫu:</p>
+                    <button
+                      type="button"
+                      onClick={handleSeed}
+                      disabled={seeding || seedDone}
+                      className="w-full py-1.5 text-xs rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 disabled:opacity-60 transition-colors"
+                    >
+                      {seeding ? 'Đang tạo...' : seedDone ? '✓ Đã tạo dữ liệu mẫu' : 'Tạo dữ liệu mẫu demo'}
+                    </button>
                   </div>
                 </div>
               )}
