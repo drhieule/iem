@@ -128,6 +128,8 @@ export default function AdminPage() {
     record_number: '',
   });
   const [patientSearch, setPatientSearch] = useState('');
+  const [createMode, setCreateMode] = useState(false);
+  const [newPatientDiagnosis, setNewPatientDiagnosis] = useState<'UCD'|'MSUD'|'OA'|'FAOD'>('UCD');
 
   useEffect(() => {
     if (!userLoading && user?.role !== 'admin') {
@@ -237,12 +239,35 @@ export default function AdminPage() {
     setError('');
     setSaving(true);
     try {
+      let patientId = grantForm.patient_id ? parseInt(grantForm.patient_id, 10) : null;
+
+      // Create new patient first if in create mode
+      if (createMode) {
+        const createRes = await fetch('/api/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: patientSearch.trim(),
+            dob_iso: '2000-01-01',
+            weight_kg: 0,
+            diagnosis: newPatientDiagnosis,
+            prescribed_meds: [],
+            emergency_contacts: [],
+          }),
+        });
+        if (!createRes.ok) { setError('Không thể tạo bệnh nhân'); return; }
+        const newPatient = await createRes.json();
+        patientId = newPatient.id;
+      }
+
+      if (!patientId) { setError('Vui lòng chọn hoặc nhập tên bệnh nhân'); return; }
+
       const res = await fetch('/api/auth/admin/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           account_type: 'patient',
-          patient_id: parseInt(grantForm.patient_id, 10),
+          patient_id: patientId,
           login_phone: grantForm.login_phone,
           record_number: grantForm.record_number,
         }),
@@ -252,6 +277,7 @@ export default function AdminPage() {
       setShowGrantModal(false);
       setGrantForm({ patient_id: '', login_phone: '', record_number: '' });
       setPatientSearch('');
+      setCreateMode(false);
       loadData();
     } finally {
       setSaving(false);
@@ -740,46 +766,72 @@ export default function AdminPage() {
 
       {/* Grant Patient Login Modal */}
       {showGrantModal && (
-        <Modal title="Cấp quyền đăng nhập bệnh nhân" onClose={() => setShowGrantModal(false)}>
+        <Modal title="Cấp quyền đăng nhập bệnh nhân" onClose={() => { setShowGrantModal(false); setCreateMode(false); setPatientSearch(''); setGrantForm({ patient_id: '', login_phone: '', record_number: '' }); }}>
           <form onSubmit={handleGrantLogin} className="space-y-4">
             <div className="relative">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Chọn bệnh nhân *</label>
-              {grantForm.patient_id ? (
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Bệnh nhân *</label>
+
+              {/* Already selected existing patient */}
+              {grantForm.patient_id && !createMode && (
                 <div className="flex items-center justify-between border border-green-300 bg-green-50 rounded-lg px-3 py-2">
                   <span className="text-sm font-medium text-green-800">{patientSearch}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setGrantForm(f => ({ ...f, patient_id: '' })); setPatientSearch(''); }}
-                    className="text-xs text-green-600 hover:text-red-600 ml-2"
-                  >
-                    Đổi
-                  </button>
+                  <button type="button" onClick={() => { setGrantForm(f => ({ ...f, patient_id: '' })); setPatientSearch(''); }} className="text-xs text-green-600 hover:text-red-600 ml-2">Đổi</button>
                 </div>
-              ) : (
+              )}
+
+              {/* Creating new patient */}
+              {createMode && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 border border-blue-300 bg-blue-50 rounded-lg px-3 py-2">
+                    <span className="text-sm font-medium text-blue-800 flex-1">{patientSearch} <span className="text-xs text-blue-500">(bệnh nhân mới)</span></span>
+                    <button type="button" onClick={() => { setCreateMode(false); setGrantForm(f => ({ ...f, patient_id: '' })); }} className="text-xs text-blue-500 hover:text-red-600">Đổi</button>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Chẩn đoán *</label>
+                    <select value={newPatientDiagnosis} onChange={e => setNewPatientDiagnosis(e.target.value as 'UCD'|'MSUD'|'OA'|'FAOD')} className={selectCls}>
+                      <option value="UCD">UCD — Rối loạn chu trình Urea</option>
+                      <option value="MSUD">MSUD — Bệnh Siro Phong</option>
+                      <option value="OA">OA — Acid Hữu Cơ Niệu</option>
+                      <option value="FAOD">FAOD — Rối loạn Oxy hóa Axit Béo</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Search / type name */}
+              {!grantForm.patient_id && !createMode && (
                 <>
                   <input
                     value={patientSearch}
                     onChange={e => { setPatientSearch(e.target.value); setGrantForm(f => ({ ...f, patient_id: '' })); }}
                     className={inputCls}
-                    placeholder="Tìm kiếm tên bệnh nhân..."
+                    placeholder="Tìm kiếm hoặc nhập tên bệnh nhân..."
                     autoComplete="off"
                   />
-                  {patientSearch && (
-                    <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden max-h-40 overflow-y-auto bg-white shadow-sm">
-                      {filteredPatientsForGrant.map(p => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            setGrantForm(f => ({ ...f, patient_id: String(p.id) }));
-                            setPatientSearch(p.name);
-                          }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-gray-100 last:border-0"
-                        >
-                          <span className="font-medium">{p.name}</span>
-                          <span className="text-xs text-gray-400 ml-2">{p.diagnosis}</span>
-                        </button>
-                      ))}
+                  {patientSearch.trim() && (
+                    <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                      {filteredPatientsForGrant.length > 0 && (
+                        <div className="max-h-36 overflow-y-auto divide-y divide-gray-50">
+                          {filteredPatientsForGrant.map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => { setGrantForm(f => ({ ...f, patient_id: String(p.id) })); setPatientSearch(p.name); }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
+                            >
+                              <span className="font-medium">{p.name}</span>
+                              <span className="text-xs text-gray-400 ml-2">{p.diagnosis}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setCreateMode(true)}
+                        className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-t border-gray-100 flex items-center gap-2"
+                      >
+                        <span>＋</span> Tạo mới &ldquo;{patientSearch.trim()}&rdquo;
+                      </button>
                     </div>
                   )}
                 </>
@@ -809,7 +861,7 @@ export default function AdminPage() {
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
-                disabled={saving || !grantForm.patient_id}
+                disabled={saving || (!grantForm.patient_id && !createMode) || (createMode && !patientSearch.trim())}
                 className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
               >
                 {saving ? 'Đang cấp...' : 'Cấp quyền'}
