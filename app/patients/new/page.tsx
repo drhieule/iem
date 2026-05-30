@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, X, Save } from 'lucide-react';
@@ -11,7 +11,12 @@ interface EmergencyContact {
   relation: string;
 }
 
-const diagnosisOptions = [
+interface CustomDiagnosis {
+  name: string;
+  base: 'UCD' | 'MSUD' | 'OA' | 'FAOD';
+}
+
+const BASE_DIAGNOSIS_OPTIONS = [
   { value: 'UCD', label: 'UCD - Rối loạn chu trình Urea' },
   { value: 'MSUD', label: 'MSUD - Bệnh Siro Phong' },
   { value: 'OA', label: 'OA - Acid Hữu Cơ Niệu (IVA/PA/MMA)' },
@@ -29,18 +34,31 @@ export default function NewPatientPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [customDiagnoses, setCustomDiagnoses] = useState<CustomDiagnosis[]>([]);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customBase, setCustomBase] = useState<'UCD' | 'MSUD' | 'OA' | 'FAOD'>('UCD');
+
+  useEffect(() => {
+    fetch('/api/custom-diagnoses').then(r => r.json()).then(setCustomDiagnoses).catch(() => {});
+  }, []);
 
   const [form, setForm] = useState({
     name: '',
     dob_iso: '',
     weight_kg: '',
-    diagnosis: '',
+    diagnosis: '' as string,
     subtype: '',
     protein_allowance_g_per_kg: '',
     formula_allowance_ml: '',
     prescribed_meds: [''],
     emergency_contacts: [{ name: '', phone: '', relation: 'Mẹ' }] as EmergencyContact[],
   });
+
+  const isCustomDiagnosis = customDiagnoses.some(d => d.name === form.diagnosis);
+  const effectiveDiagnosis = isCustomDiagnosis
+    ? customDiagnoses.find(d => d.name === form.diagnosis)!.base
+    : form.diagnosis as 'UCD' | 'MSUD' | 'OA' | 'FAOD' | '';
 
   function updateField(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -77,6 +95,22 @@ export default function NewPatientPage() {
     setForm(prev => ({ ...prev, emergency_contacts: prev.emergency_contacts.filter((_, i) => i !== idx) }));
   }
 
+  async function handleAddCustomDiagnosis() {
+    if (!customName.trim()) return;
+    const res = await fetch('/api/custom-diagnoses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: customName.trim(), base: customBase }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setCustomDiagnoses(updated);
+      updateField('diagnosis', customName.trim());
+      setShowCustomInput(false);
+      setCustomName('');
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -86,6 +120,9 @@ export default function NewPatientPage() {
     }
     setSubmitting(true);
     try {
+      const diagBase = isCustomDiagnosis ? effectiveDiagnosis : form.diagnosis;
+      const diagSubtype = isCustomDiagnosis ? form.diagnosis : (form.subtype || undefined);
+
       const res = await fetch('/api/patients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,8 +130,8 @@ export default function NewPatientPage() {
           name: form.name,
           dob_iso: form.dob_iso,
           weight_kg: Number(form.weight_kg),
-          diagnosis: form.diagnosis,
-          subtype: form.subtype || undefined,
+          diagnosis: diagBase,
+          subtype: diagSubtype,
           prescribed_meds: form.prescribed_meds.filter(m => m.trim()),
           protein_allowance_g_per_kg: form.protein_allowance_g_per_kg ? Number(form.protein_allowance_g_per_kg) : undefined,
           formula_allowance_ml: form.formula_allowance_ml ? Number(form.formula_allowance_ml) : undefined,
@@ -108,7 +145,7 @@ export default function NewPatientPage() {
       }
       const patient = await res.json();
       router.push(`/patients/${patient.id}`);
-    } catch (e) {
+    } catch {
       setError('Lỗi kết nối máy chủ');
     } finally {
       setSubmitting(false);
@@ -180,18 +217,80 @@ export default function NewPatientPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Chẩn đoán *</label>
               <select
                 value={form.diagnosis}
-                onChange={e => updateField('diagnosis', e.target.value)}
+                onChange={e => {
+                  if (e.target.value === '__custom__') {
+                    setShowCustomInput(true);
+                    updateField('diagnosis', '');
+                  } else {
+                    setShowCustomInput(false);
+                    updateField('diagnosis', e.target.value);
+                  }
+                }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                required
+                required={!showCustomInput}
               >
                 <option value="">-- Chọn chẩn đoán --</option>
-                {diagnosisOptions.map(o => (
+                {BASE_DIAGNOSIS_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
+                {customDiagnoses.length > 0 && (
+                  <optgroup label="Bệnh khác">
+                    {customDiagnoses.map(d => (
+                      <option key={d.name} value={d.name}>{d.name} (nhóm {d.base})</option>
+                    ))}
+                  </optgroup>
+                )}
+                <option value="__custom__">＋ Thêm bệnh khác...</option>
               </select>
             </div>
 
-            {form.diagnosis && subtypeOptions[form.diagnosis] && (
+            {showCustomInput && (
+              <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium text-blue-800">Thêm chẩn đoán mới</p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Tên chẩn đoán *</label>
+                  <input
+                    type="text"
+                    value={customName}
+                    onChange={e => setCustomName(e.target.value)}
+                    placeholder="vd: GA1, HCU, PKU..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Xếp vào nhóm quản lý *</label>
+                  <select
+                    value={customBase}
+                    onChange={e => setCustomBase(e.target.value as 'UCD' | 'MSUD' | 'OA' | 'FAOD')}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    {BASE_DIAGNOSIS_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddCustomDiagnosis}
+                    disabled={!customName.trim()}
+                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Lưu & chọn
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowCustomInput(false); setCustomName(''); }}
+                    className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50"
+                  >
+                    Huỷ
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!isCustomDiagnosis && form.diagnosis && subtypeOptions[form.diagnosis] && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phân nhóm</label>
                 <select
