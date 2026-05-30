@@ -190,13 +190,6 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
                   {day}
                 </span>
 
-                {/* Morning specialist note (Mon–Fri) */}
-                {isWD && (
-                  <div className="text-[9px] leading-tight bg-emerald-50 text-emerald-700 rounded px-1 py-0.5 truncate">
-                    Sáng PKC CG
-                  </div>
-                )}
-
                 {/* Afternoon metabolic session (Tue/Thu) */}
                 {isTT && (
                   <div
