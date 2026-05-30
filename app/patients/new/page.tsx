@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, X, Save } from 'lucide-react';
+import { ArrowLeft, Plus, X, Save, Pencil, Trash2, Check } from 'lucide-react';
 
 interface EmergencyContact {
   name: string;
@@ -38,6 +38,10 @@ export default function NewPatientPage() {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customBase, setCustomBase] = useState<'UCD' | 'MSUD' | 'OA' | 'FAOD'>('UCD');
+  const [showManage, setShowManage] = useState(false);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editBase, setEditBase] = useState<'UCD' | 'MSUD' | 'OA' | 'FAOD'>('UCD');
 
   useEffect(() => {
     fetch('/api/custom-diagnoses').then(r => r.json()).then(setCustomDiagnoses).catch(() => {});
@@ -108,6 +112,36 @@ export default function NewPatientPage() {
       updateField('diagnosis', customName.trim());
       setShowCustomInput(false);
       setCustomName('');
+    }
+  }
+
+  function startEdit(d: CustomDiagnosis) {
+    setEditingName(d.name);
+    setEditName(d.name);
+    setEditBase(d.base);
+  }
+
+  async function handleSaveEdit(oldName: string) {
+    if (!editName.trim()) return;
+    const res = await fetch('/api/custom-diagnoses', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldName, name: editName.trim(), base: editBase }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setCustomDiagnoses(updated);
+      if (form.diagnosis === oldName) updateField('diagnosis', editName.trim());
+      setEditingName(null);
+    }
+  }
+
+  async function handleDeleteCustom(name: string) {
+    const res = await fetch(`/api/custom-diagnoses?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (res.ok) {
+      const updated = await res.json();
+      setCustomDiagnoses(updated);
+      if (form.diagnosis === name) updateField('diagnosis', '');
     }
   }
 
@@ -287,6 +321,88 @@ export default function NewPatientPage() {
                     Huỷ
                   </button>
                 </div>
+              </div>
+            )}
+
+            {customDiagnoses.length > 0 && !showCustomInput && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { setShowManage(v => !v); setEditingName(null); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                >
+                  {showManage ? 'Ẩn danh sách bệnh khác' : 'Sửa / xoá bệnh đã lưu'}
+                </button>
+                {showManage && (
+                  <div className="mt-2 border border-gray-200 rounded-lg divide-y divide-gray-100">
+                    {customDiagnoses.map(d => (
+                      <div key={d.name} className="px-3 py-2">
+                        {editingName === d.name ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={e => setEditName(e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                              autoFocus
+                            />
+                            <select
+                              value={editBase}
+                              onChange={e => setEditBase(e.target.value as 'UCD' | 'MSUD' | 'OA' | 'FAOD')}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                              {BASE_DIAGNOSIS_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEdit(d.name)}
+                                disabled={!editName.trim()}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                <Check className="w-3 h-3" /> Lưu
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingName(null)}
+                                className="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-xs hover:bg-gray-50"
+                              >
+                                Huỷ
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <span className="text-sm font-medium text-gray-800">{d.name}</span>
+                              <span className="ml-2 text-xs text-gray-400">nhóm {d.base}</span>
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => startEdit(d)}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Sửa"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCustom(d.name)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Xoá"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
