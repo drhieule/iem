@@ -20,6 +20,11 @@ const MONTH_NAMES = [
   'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
 ];
 
+const PRESET_DOCTORS = ['BS Nhung', 'BS Phượng', 'BS Phúc'];
+
+const DEFAULT_FOOTER_NOTE =
+  'Buổi chiều T3 & T5 tại P.E02.03 — bệnh nhân nên đến trước 14:00 để làm xét nghiệm có kết quả sớm. Buổi sáng T2–T6 đăng ký Phòng khám Chuyên gia để được khám RLCH - Di truyền.';
+
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
@@ -57,8 +62,15 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [editDoctor, setEditDoctor] = useState('');
+  const [editDoctorCustom, setEditDoctorCustom] = useState(false);
   const [editNotes, setEditNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Footer note state
+  const [footerNote, setFooterNote] = useState(DEFAULT_FOOTER_NOTE);
+  const [editingFooter, setEditingFooter] = useState(false);
+  const [footerDraft, setFooterDraft] = useState('');
+  const [savingFooter, setSavingFooter] = useState(false);
 
   const fetchSessions = useCallback(async () => {
     setLoading(true);
@@ -73,7 +85,20 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
     }
   }, [year, month]);
 
+  const fetchFooterNote = useCallback(async () => {
+    try {
+      const res = await fetch('/api/public/clinic-note');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.note) setFooterNote(data.note);
+      }
+    } catch {
+      // keep default
+    }
+  }, []);
+
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
+  useEffect(() => { fetchFooterNote(); }, [fetchFooterNote]);
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -89,7 +114,10 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
     if (!editable) return;
     const s = sessions[dateStr];
     setEditing(dateStr);
-    setEditDoctor(s?.doctor_name || '');
+    const doctor = s?.doctor_name || '';
+    const isPreset = PRESET_DOCTORS.includes(doctor);
+    setEditDoctor(doctor);
+    setEditDoctorCustom(!isPreset && doctor !== '');
     setEditNotes(s?.notes || '');
   }
 
@@ -110,6 +138,26 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
       fetchSessions();
     } finally {
       setSaving(false);
+    }
+  }
+
+  function startEditFooter() {
+    setFooterDraft(footerNote);
+    setEditingFooter(true);
+  }
+
+  async function saveFooter() {
+    setSavingFooter(true);
+    try {
+      await fetch('/api/clinic-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'note', value: footerDraft }),
+      });
+      setFooterNote(footerDraft);
+      setEditingFooter(false);
+    } finally {
+      setSavingFooter(false);
     }
   }
 
@@ -142,7 +190,7 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
       <div className="px-3 py-2 bg-blue-50 border-b border-blue-100 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         <span className="flex items-center gap-1 text-emerald-700">
           <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-          Sáng T2–T6: Đăng ký PKC Chuyên gia (RLCH - Di truyền)
+          Sáng T2–T6: Đăng ký PK Chuyên gia (RLCH - Di truyền)
         </span>
         <span className="flex items-center gap-1 text-blue-700">
           <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
@@ -191,7 +239,7 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
                 </span>
 
                 {/* Afternoon metabolic session (Tue/Thu) */}
-                {isTT && (
+                {isTT && (session?.doctor_name || editable) && (
                   <div
                     className={`text-[9px] leading-tight rounded px-1 py-0.5 flex items-start justify-between gap-0.5 ${
                       session?.doctor_name
@@ -202,9 +250,7 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
                     title={editable ? 'Nhấn để phân công bác sĩ' : undefined}
                   >
                     <span className="truncate flex-1">
-                      {session?.doctor_name
-                        ? `Chiều: ${session.doctor_name}`
-                        : 'Chiều: chưa sắp'}
+                      {session?.doctor_name || ''}
                     </span>
                     {editable && (
                       <Pencil className="w-2.5 h-2.5 flex-shrink-0 mt-0.5 opacity-60" />
@@ -232,15 +278,44 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Bác sĩ phụ trách</label>
-                <input
-                  type="text"
-                  value={editDoctor}
-                  onChange={e => setEditDoctor(e.target.value)}
-                  placeholder="VD: BS. Hồng Phúc"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoFocus
-                />
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Bác sĩ phụ trách</label>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {PRESET_DOCTORS.map(name => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => { setEditDoctor(name); setEditDoctorCustom(false); }}
+                      className={`py-2 px-1 text-sm rounded-lg border font-medium transition-colors ${
+                        editDoctor === name && !editDoctorCustom
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setEditDoctorCustom(true); if (PRESET_DOCTORS.includes(editDoctor)) setEditDoctor(''); }}
+                  className={`w-full py-2 text-sm rounded-lg border font-medium transition-colors ${
+                    editDoctorCustom
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                  }`}
+                >
+                  Bác sĩ khác
+                </button>
+                {editDoctorCustom && (
+                  <input
+                    type="text"
+                    value={editDoctor}
+                    onChange={e => setEditDoctor(e.target.value)}
+                    placeholder="VD: BS. Hồng Phúc"
+                    className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Ghi chú (tùy chọn)</label>
@@ -280,8 +355,46 @@ export function ClinicScheduleCalendar({ editable = false }: Props) {
 
       {/* Footer info */}
       <div className="px-3 py-2 bg-amber-50 border-t border-amber-100 text-xs text-amber-700">
-        <strong>Lưu ý:</strong> Buổi chiều T3 &amp; T5 tại P.E02.03 — bệnh nhân nên đến trước 14:00 để làm xét nghiệm có kết quả sớm.
-        Buổi sáng T2–T6 đăng ký <strong>Phòng khám Chuyên gia</strong> để được khám RLCH - Di truyền.
+        {editingFooter ? (
+          <div className="space-y-2">
+            <textarea
+              value={footerDraft}
+              onChange={e => setFooterDraft(e.target.value)}
+              rows={3}
+              className="w-full border border-amber-300 rounded-lg px-2 py-1.5 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditingFooter(false)}
+                className="px-3 py-1 border border-amber-300 rounded text-xs text-amber-700 hover:bg-amber-100"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={saveFooter}
+                disabled={savingFooter}
+                className="px-3 py-1 bg-amber-600 text-white rounded text-xs font-medium hover:bg-amber-700 disabled:opacity-60"
+              >
+                {savingFooter ? 'Đang lưu...' : 'Lưu'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-1.5">
+            <span>
+              <strong>Lưu ý:</strong> {footerNote}
+            </span>
+            {editable && (
+              <button
+                onClick={startEditFooter}
+                className="flex-shrink-0 mt-0.5 text-amber-500 hover:text-amber-700"
+                title="Chỉnh sửa ghi chú"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

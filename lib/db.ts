@@ -135,6 +135,12 @@ function initializeSchema(database: Database.Database): void {
       created_by INTEGER REFERENCES staff(id),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Safe migrations: add columns to patients if they don't exist
@@ -793,4 +799,17 @@ export function upsertClinicSession(
 export function deleteClinicSession(session_date: string): boolean {
   const database = getDb();
   return database.prepare('DELETE FROM clinic_sessions WHERE session_date = ?').run(session_date).changes > 0;
+}
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+
+export function getSetting(key: string): string | null {
+  const database = getDb();
+  const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string): void {
+  const database = getDb();
+  database.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime(\'now\')').run(key, value);
 }

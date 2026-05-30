@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertClinicSession, deleteClinicSession } from '@/lib/db';
+import { upsertClinicSession, deleteClinicSession, setSetting } from '@/lib/db';
 import { verifyToken, COOKIE_NAME } from '@/lib/auth';
 
 async function requireDoctorOrAdmin(request: NextRequest) {
@@ -16,11 +16,23 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json() as {
-      session_date: string;
-      doctor_name: string | null;
+      type?: string;
+      value?: string;
+      session_date?: string;
+      doctor_name?: string | null;
       notes?: string | null;
     };
 
+    // Handle footer note update
+    if (body.type === 'note') {
+      if (typeof body.value !== 'string') {
+        return NextResponse.json({ error: 'Giá trị không hợp lệ' }, { status: 400 });
+      }
+      setSetting('clinic_footer_note', body.value);
+      return NextResponse.json({ success: true });
+    }
+
+    // Handle session upsert
     if (!body.session_date || !/^\d{4}-\d{2}-\d{2}$/.test(body.session_date)) {
       return NextResponse.json({ error: 'Ngày không hợp lệ' }, { status: 400 });
     }
