@@ -34,8 +34,6 @@ export default function HomePage() {
   const [patients, setPatients] = useState<PatientWithFlag[]>([]);
   const [activeFlags, setActiveFlags] = useState<FlagEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
-
   async function loadData() {
     setLoading(true);
     try {
@@ -77,15 +75,6 @@ export default function HomePage() {
     }
   }
 
-  async function handleSeed() {
-    setSeeding(true);
-    try {
-      await fetch('/api/seed', { method: 'POST' });
-      await loadData();
-    } finally {
-      setSeeding(false);
-    }
-  }
 
   useEffect(() => {
     loadData();
@@ -174,15 +163,6 @@ export default function HomePage() {
             <Plus className="w-4 h-4" />
             Thêm bệnh nhân
           </Link>
-          {patients.length === 0 && !loading && (
-            <button
-              onClick={handleSeed}
-              disabled={seeding}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors border border-gray-300"
-            >
-              {seeding ? 'Đang tạo...' : 'Tải dữ liệu mẫu'}
-            </button>
-          )}
         </div>
 
         {/* Patient Grid */}
@@ -197,14 +177,7 @@ export default function HomePage() {
           <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
             <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-gray-700 mb-1">Chưa có bệnh nhân</h3>
-            <p className="text-gray-500 text-sm mb-4">Thêm bệnh nhân đầu tiên hoặc tải dữ liệu mẫu để bắt đầu</p>
-            <button
-              onClick={handleSeed}
-              disabled={seeding}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              {seeding ? 'Đang tải...' : 'Tải dữ liệu mẫu (4 BN)'}
-            </button>
+            <p className="text-gray-500 text-sm">Nhấn &ldquo;Thêm bệnh nhân&rdquo; để bắt đầu</p>
           </div>
         ) : (
           <>
